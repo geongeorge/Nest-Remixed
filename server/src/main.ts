@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import { NestExpressApplication } from '@nestjs/platform-express'
-import { getRemixHandler, broadcastOnReady } from './remix'
+import { getRemixHandler, broadcastOnReady, PUBLIC_PATH } from './remix'
+import * as serveStatic from 'serve-static'
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
 
@@ -13,10 +14,12 @@ async function bootstrap() {
   const express = app.getHttpAdapter().getInstance()
   express.all('*', await getRemixHandler())
 
+  express.use(serveStatic(PUBLIC_PATH, { index: false }))
+
   await app.init()
 
   app.listen(PORT).then(() => {
-    console.log(`> Server ready on ${PORT}`)
+    console.log(`> Server ready on http://localhost:${PORT}`)
 
     broadcastOnReady()
   })

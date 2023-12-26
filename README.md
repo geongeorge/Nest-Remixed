@@ -21,11 +21,18 @@ yarn
 yarn dev
 ```
 
+## Route configuration
+
+- All `/api` routes go to Nest js
+- All `/build` and `/assets` is served by nest from `/remix/public`
+- All other routes go to Remix
+
 ## References
 
 - https://remix.run/docs/en/main/start/quickstart#bring-your-own-server
 - https://remix.run/docs/en/main/guides/manual-mode
+- https://github.com/remix-run/remix/blob/main/templates/express/server.js
 
-## Known Issues
+## Assets
 
-- There are a bunch of 404 messages in the console when HMR is working. This will be resolved
+Because we use nest to serve remix and both have a concept of assets, We are going to serve assets using our nest js server. But the asset should be placed in `/remix/public/assets` folder.
