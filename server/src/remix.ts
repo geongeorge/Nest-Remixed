@@ -1,9 +1,28 @@
 import * as path from 'path'
-import watch from 'node-watch'
+import * as fs from 'fs'
+import * as url from 'url'
 import { RequestHandler, createRequestHandler } from '@remix-run/express'
-import { broadcastDevReady } from '@remix-run/node'
+import { broadcastDevReady, installGlobals } from '@remix-run/node'
+import * as sourceMapSupport from 'source-map-support'
+
+sourceMapSupport.install({
+  retrieveSourceMap: function (source) {
+    // get source file with the `file://` prefix
+    const match = source.match(/^file:\/\/(.*)$/)
+    if (match) {
+      const filePath = url.fileURLToPath(source)
+      return {
+        url: source,
+        map: fs.readFileSync(`${filePath}.map`, 'utf8'),
+      }
+    }
+    return null
+  },
+})
+installGlobals()
 
 const BUILD_PATH = path.resolve('../remix/build/index.cjs')
+const PUBLIC_PATH = path.resolve('../remix/public')
 const VERSION_PATH = path.resolve('../remix/build/version.txt')
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -26,7 +45,8 @@ function reimportServer() {
 /**
  * @param {ServerBuild} initialBuild
  */
-function createDevRequestHandler(initialBuild) {
+async function createDevRequestHandler(initialBuild) {
+  const watch = (await import('node-watch')).default
   let build = initialBuild
   async function handleServerUpdate() {
     // 1. re-import the server build
@@ -55,12 +75,16 @@ function createDevRequestHandler(initialBuild) {
 async function getRemixHandler() {
   const remixBuild = await reimportServer()
   const remixHandler = isDev
-    ? createDevRequestHandler(remixBuild)
+    ? await createDevRequestHandler(remixBuild)
     : createRequestHandler({ build: remixBuild })
 
   const handler: RequestHandler = async (req, res, next) => {
     // if the request is for the API, skip Remix and let Nest handle it
-    if (req.originalUrl.startsWith('/api')) {
+    if (
+      req.originalUrl.startsWith('/api') ||
+      req.originalUrl.startsWith('/build') ||
+      req.originalUrl.startsWith('/assets')
+    ) {
       return next()
     }
 
@@ -77,4 +101,4 @@ async function broadcastOnReady() {
   }
 }
 
-export { getRemixHandler, broadcastOnReady }
+export { getRemixHandler, broadcastOnReady, PUBLIC_PATH }
